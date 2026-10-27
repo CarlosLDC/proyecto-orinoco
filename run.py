@@ -10,12 +10,24 @@ import shutil
 import subprocess
 import signal
 import time
+import socket
 import threading
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
 IS_WINDOWS = os.name == "nt"
+
+def find_available_port(start_port: int, host: str = "127.0.0.1", max_attempts: int = 50) -> int:
+    """Busca el primer puerto disponible a partir de start_port."""
+    for port in range(start_port, start_port + max_attempts):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((host, port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError(f"No se encontró un puerto libre a partir de {start_port}")
 
 def get_npm_cmd() -> str:
     """Devuelve el comando npm adecuado para el sistema."""
@@ -132,12 +144,18 @@ def cmd_dev():
         print("   Ejecuta primero: python run.py setup (o dev.bat / make install)")
         sys.exit(1)
 
+    backend_port = find_available_port(8000)
+    frontend_port = find_available_port(3000)
+
     print("=" * 60)
     print("  🌊 Proyecto Orinoco - Levantando Servidores")
     print("=" * 60)
-    print("  🌐 Backend API:  http://localhost:8000  (Docs: http://localhost:8000/docs)")
-    print("  💻 Frontend Web: http://localhost:3000")
-    print("  Presiona Ctrl + C para detener ambos servidores.")
+    print(f"  🌐 Backend API:  http://localhost:{backend_port}  (Docs: http://localhost:{backend_port}/docs)")
+    print(f"  💻 Frontend Web: http://localhost:{frontend_port}")
+    if backend_port != 8000 or frontend_port != 3000:
+        print(f"  ℹ️  Se asignaron puertos alternativos libres ({backend_port} / {frontend_port})")
+    print("  💡 La pestaña del navegador se abrirá automáticamente.")
+    print("  💡 Al cerrar la pestaña (o presionar Ctrl + C), los servidores se detendrán.")
     print("=" * 60 + "\n")
 
     backend_proc = None
@@ -156,7 +174,7 @@ def cmd_dev():
             "--host",
             "0.0.0.0",
             "--port",
-            "8000",
+            str(backend_port),
             "--reload",
         ]
         backend_proc = subprocess.Popen(
@@ -168,14 +186,19 @@ def cmd_dev():
         time.sleep(1)
 
         # 2. Iniciar Next.js
+        frontend_env = os.environ.copy()
+        frontend_env["PORT"] = str(frontend_port)
+        frontend_env["BACKEND_PORT"] = str(backend_port)
+
         frontend_proc = subprocess.Popen(
-            [npm_cmd, "run", "dev"],
+            [npm_cmd, "run", "dev", "--", "-p", str(frontend_port)],
             cwd=str(FRONTEND_DIR),
             preexec_fn=preexec,
+            env=frontend_env,
         )
 
         # 3. Abrir navegador automáticamente cuando el frontend esté listo
-        open_browser_when_ready("http://localhost:3000")
+        open_browser_when_ready(f"http://localhost:{frontend_port}")
 
         # Esperar a que alguno termine o se presione Ctrl+C
         while True:
@@ -201,6 +224,8 @@ def cmd_backend():
     if not venv_python.exists():
         print("❌ Entorno virtual no encontrado. Ejecuta: python run.py setup")
         sys.exit(1)
+    backend_port = find_available_port(8000)
+    print(f"Iniciando Backend en http://localhost:{backend_port} (Docs: http://localhost:{backend_port}/docs)...")
     backend_cmd = [
         str(venv_python),
         "-m",
@@ -209,7 +234,7 @@ def cmd_backend():
         "--host",
         "0.0.0.0",
         "--port",
-        "8000",
+        str(backend_port),
         "--reload",
     ]
     sys.exit(subprocess.call(backend_cmd, cwd=str(ROOT_DIR)))
@@ -217,7 +242,11 @@ def cmd_backend():
 def cmd_frontend():
     """Inicia únicamente el servidor frontend Next.js."""
     npm_cmd = get_npm_cmd()
-    sys.exit(subprocess.call([npm_cmd, "run", "dev"], cwd=str(FRONTEND_DIR)))
+    frontend_port = find_available_port(3000)
+    print(f"Iniciando Frontend en http://localhost:{frontend_port}...")
+    frontend_env = os.environ.copy()
+    frontend_env["PORT"] = str(frontend_port)
+    sys.exit(subprocess.call([npm_cmd, "run", "dev", "--", "-p", str(frontend_port)], cwd=str(FRONTEND_DIR), env=frontend_env))
 
 def cmd_test():
     """Ejecuta los tests del backend con pytest."""

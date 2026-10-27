@@ -7,10 +7,33 @@
 const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const net = require('net');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const FRONTEND_DIR = path.join(ROOT_DIR, 'frontend');
 const IS_WIN = process.platform === 'win32';
+
+function checkPortFree(port, host = '127.0.0.1') {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => {
+      resolve(false);
+    });
+    server.once('listening', () => {
+      server.close(() => resolve(true));
+    });
+    server.listen(port, host);
+  });
+}
+
+async function findAvailablePort(startPort, host = '127.0.0.1', maxAttempts = 50) {
+  for (let port = startPort; port < startPort + maxAttempts; port++) {
+    if (await checkPortFree(port, host)) {
+      return port;
+    }
+  }
+  throw new Error(`No se encontró ningún puerto libre a partir de ${startPort}`);
+}
 
 function getVenvPython() {
   return path.join(
@@ -175,7 +198,7 @@ function waitForServerAndOpen(url, maxWaitMs = 30000) {
   setTimeout(probe, 600);
 }
 
-function cmdDev() {
+async function cmdDev() {
   const venvPython = getVenvPython();
   if (!fs.existsSync(venvPython)) {
     console.error('❌ Entorno virtual no configurado.');
@@ -190,11 +213,18 @@ function cmdDev() {
     process.exit(1);
   }
 
+  // Detectar puertos libres automáticamente
+  const backendPort = await findAvailablePort(8000);
+  const frontendPort = await findAvailablePort(3000);
+
   console.log('='.repeat(60));
   console.log('  🌊 Proyecto Orinoco - Levantando Servidores');
   console.log('='.repeat(60));
-  console.log('  🌐 Backend API:  http://localhost:8000  (Docs: http://localhost:8000/docs)');
-  console.log('  💻 Frontend Web: http://localhost:3000');
+  console.log(`  🌐 Backend API:  http://localhost:${backendPort}  (Docs: http://localhost:${backendPort}/docs)`);
+  console.log(`  💻 Frontend Web: http://localhost:${frontendPort}`);
+  if (backendPort !== 8000 || frontendPort !== 3000) {
+    console.log(`  ℹ️  Se asignaron puertos alternativos libres (${backendPort} / ${frontendPort})`);
+  }
   console.log('  💡 La pestaña del navegador se abrirá automáticamente.');
   console.log('  💡 Al cerrar la pestaña (o presionar Ctrl + C), los servidores se detendrán.');
   console.log('='.repeat(60) + '\n');
@@ -225,7 +255,7 @@ function cmdDev() {
   // 1. Iniciar Backend
   backendProc = spawn(
     venvPython,
-    ['-m', 'uvicorn', 'src.api.main:app', '--host', '0.0.0.0', '--port', '8000', '--reload'],
+    ['-m', 'uvicorn', 'src.api.main:app', '--host', '0.0.0.0', '--port', backendPort.toString(), '--reload'],
     {
       cwd: ROOT_DIR,
       stdio: 'inherit',
@@ -239,12 +269,17 @@ function cmdDev() {
     }
   });
 
-  // 2. Iniciar Frontend
-  frontendProc = spawn(getNpmCmd(), ['run', 'dev'], {
+  // 2. Iniciar Frontend pasando puertos por variables de entorno
+  frontendProc = spawn(getNpmCmd(), ['run', 'dev', '--', '-p', frontendPort.toString()], {
     cwd: FRONTEND_DIR,
     stdio: 'inherit',
     shell: IS_WIN,
     detached: !IS_WIN,
+    env: {
+      ...process.env,
+      PORT: frontendPort.toString(),
+      BACKEND_PORT: backendPort.toString(),
+    },
   });
 
   frontendProc.on('exit', () => {
@@ -254,28 +289,36 @@ function cmdDev() {
   });
 
   // 3. Esperar que el frontend responda y abrir navegador
-  waitForServerAndOpen('http://localhost:3000');
+  waitForServerAndOpen(`http://localhost:${frontendPort}`);
 }
 
-function cmdBackend() {
+async function cmdBackend() {
   const venvPython = getVenvPython();
   if (!fs.existsSync(venvPython)) {
     console.error('❌ Entorno virtual no encontrado. Ejecuta: npm run setup');
     process.exit(1);
   }
+  const backendPort = await findAvailablePort(8000);
+  console.log(`Iniciando Backend en http://localhost:${backendPort} (Docs: http://localhost:${backendPort}/docs)...`);
   const proc = spawn(
     venvPython,
-    ['-m', 'uvicorn', 'src.api.main:app', '--host', '0.0.0.0', '--port', '8000', '--reload'],
+    ['-m', 'uvicorn', 'src.api.main:app', '--host', '0.0.0.0', '--port', backendPort.toString(), '--reload'],
     { cwd: ROOT_DIR, stdio: 'inherit' }
   );
   proc.on('exit', (code) => process.exit(code || 0));
 }
 
-function cmdFrontend() {
-  const proc = spawn(getNpmCmd(), ['run', 'dev'], {
+async function cmdFrontend() {
+  const frontendPort = await findAvailablePort(3000);
+  console.log(`Iniciando Frontend en http://localhost:${frontendPort}...`);
+  const proc = spawn(getNpmCmd(), ['run', 'dev', '--', '-p', frontendPort.toString()], {
     cwd: FRONTEND_DIR,
     stdio: 'inherit',
     shell: IS_WIN,
+    env: {
+      ...process.env,
+      PORT: frontendPort.toString(),
+    },
   });
   proc.on('exit', (code) => process.exit(code || 0));
 }
