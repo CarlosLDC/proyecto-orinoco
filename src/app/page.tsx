@@ -124,12 +124,14 @@ export default function OrinocoDashboardPage() {
 
       {/* Focused Single-View Content */}
       <main className="mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-6">
-        <StationCards
-          stations={stations}
-          summaries={summary?.estaciones ?? []}
-          selectedStation={selectedStation}
-          onSelectStation={setSelectedStation}
-        />
+        {activeTab !== "didactic" && (
+          <StationCards
+            stations={stations}
+            summaries={summary?.estaciones ?? []}
+            selectedStation={selectedStation}
+            onSelectStation={setSelectedStation}
+          />
+        )}
 
         {activeTab === "forecast" && (
           <ForecastComparisonChart
