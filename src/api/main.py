@@ -132,7 +132,7 @@ def get_all_forecasts() -> pd.DataFrame:
 def get_all_test_preds() -> pd.DataFrame:
     """Consolidates test set predictions (2024-12-01 to 2025-02-24) from all models."""
     dfs = []
-    for fname in ["test_preds_arima.csv", "test_preds_deep_learning.csv", "test_preds_timesfm.csv"]:
+    for fname in ["test_preds_arima.csv", "test_preds_deep_learning.csv", "test_preds_timesfm.csv", "test_preds_simpleml.csv"]:
         fpath = DATA_DIR / fname
         if fpath.exists():
             df_t = pd.read_csv(fpath)
@@ -151,7 +151,7 @@ def get_all_test_preds() -> pd.DataFrame:
 def get_all_metrics() -> pd.DataFrame:
     """Consolidates metrics from all models."""
     dfs = []
-    for fname in ["metrics_arima_sarimax.csv", "metrics_deep_learning.csv", "metrics_timesfm.csv"]:
+    for fname in ["metrics_arima_sarimax.csv", "metrics_deep_learning.csv", "metrics_timesfm.csv", "metrics_simpleml.csv"]:
         fpath = DATA_DIR / fname
         if fpath.exists():
             dfs.append(pd.read_csv(fpath))
