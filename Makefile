@@ -10,21 +10,19 @@ help:
 	@echo "  make clean    - Elimina archivos temporales y caches"
 
 install:
-	@chmod +x setup.sh dev.sh
-	@./setup.sh
+	@python3 run.py setup
 
 dev:
-	@chmod +x dev.sh
-	@./dev.sh
+	@python3 run.py dev
 
 backend:
-	@./.venv/bin/uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+	@python3 run.py backend
 
 frontend:
-	@cd frontend && npm run dev
+	@python3 run.py frontend
 
 test:
-	@./.venv/bin/pytest
+	@python3 run.py test
 
 clean:
 	@rm -rf __pycache__ .pytest_cache frontend/.next .venv/lib/*/site-packages/**/__pycache__

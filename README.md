@@ -12,37 +12,51 @@ Este repositorio unifica:
 
 ---
 
-## ⚡ Inicio Rápido (Un solo comando)
+## ⚡ Inicio Rápido Multiplataforma (Windows, Linux, macOS)
 
 ### 1. Instalar todas las dependencias (Backend + Frontend)
-Con un solo comando preparas el entorno virtual de Python y las dependencias de Node.js:
+Prepara el entorno virtual de Python (`.venv`), dependencias de `requirements.txt` y paquetes de Node.js en `frontend/`:
 
-```bash
-make install
-# O alternativamente: ./setup.sh
-```
+* **En Windows (CMD / PowerShell / Doble Clic):**
+  ```cmd
+  setup.bat
+  :: O también: python run.py setup
+  ```
+
+* **En Linux / macOS:**
+  ```bash
+  make install
+  # O también: python3 run.py setup   o   ./setup.sh
+  ```
 
 ### 2. Levantar ambos servidores en simultáneo
-Inicia FastAPI en `http://localhost:8000` y Next.js en `http://localhost:3000` en paralelo con recarga en vivo:
+Inicia FastAPI en `http://localhost:8000` (docs en `/docs`) y Next.js en `http://localhost:3000` en paralelo con recarga en vivo:
 
-```bash
-make dev
-# O alternativamente: ./dev.sh
-```
-*(Al presionar `Ctrl + C` ambos servidores se detienen de forma limpia).*
+* **En Windows (CMD / PowerShell / Doble Clic):**
+  ```cmd
+  dev.bat
+  :: O también: python run.py dev
+  ```
+
+* **En Linux / macOS:**
+  ```bash
+  make dev
+  # O también: python3 run.py dev   o   ./dev.sh
+  ```
+
+*(Al presionar `Ctrl + C`, ambos servidores se detienen de forma limpia y liberan los puertos tanto en Windows como en Linux/macOS).*
 
 ---
 
-## 🛠️ Comandos de Makefile Disponibles
+## 🛠️ Comandos Disponibles
 
-| Comando | Descripción |
-|---|---|
-| `make install` | Crea el entorno virtual `.venv` e instala dependencias de Python y Node.js |
-| `make dev` | Levanta ambos servidores (Backend :8000 y Frontend :3000) en simultáneo |
-| `make backend` | Levanta únicamente el backend FastAPI |
-| `make frontend` | Levanta únicamente el frontend Next.js |
-| `make test` | Ejecuta las pruebas unitarias con pytest |
-| `make clean` | Limpia caches y archivos temporales |
+| Tarea | En Windows | En Linux / macOS | Vía Python (Cualquier SO) |
+|---|---|---|---|
+| **Instalar todo** | `setup.bat` | `make install` | `python run.py setup` |
+| **Levantar ambos servidores** | `dev.bat` | `make dev` | `python run.py dev` |
+| **Solo Backend** | `python run.py backend` | `make backend` | `python run.py backend` |
+| **Solo Frontend** | `cd frontend && npm run dev` | `make frontend` | `python run.py frontend` |
+| **Correr Pruebas (Pytest)** | `python run.py test` | `make test` | `python run.py test` |
 
 ---
 
