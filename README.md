@@ -1,23 +1,37 @@
-# Proyecto Orinoco - Backend
+# Proyecto Orinoco - Monorepo
 
-Backend de analítica predictiva y API REST para el pronóstico de cotas hidrométricas del Río Orinoco en 4 estaciones clave:
+Monorepo integral para el pronóstico y análisis de cotas hidrométricas del Río Orinoco en 4 estaciones clave:
 1. **Puerto Ayacucho** (Alto Orinoco)
 2. **Caicara del Orinoco** (Medio Orinoco)
 3. **Ciudad Bolívar** (Bajo Orinoco)
 4. **Palúa** (Confluencia Caroní-Orinoco)
 
+Este repositorio unifica:
+* **Backend y ML Pipelines (`src/`):** Modelado predictivo (AutoARIMA, ARIMAX, LSTM, Bi-LSTM, Transformer, TimesFM) y API REST con FastAPI.
+* **Frontend (`frontend/`):** Dashboard web interactivo desarrollado con Next.js 15, React, Tailwind CSS y Recharts.
+
 ---
 
 ## 🚀 Requisitos y Configuración
 
-### 1. Entorno Virtual y Dependencias
-Crear y activar el entorno virtual con Python 3.10+:
+### 1. Backend (Python 3.10+)
+Crear y activar el entorno virtual e instalar dependencias:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+### 2. Frontend (Node.js 18+)
+Instalar dependencias y levantar el servidor web:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Acceder a la aplicación en `http://localhost:3000`.
 
 ---
 

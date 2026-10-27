@@ -8,15 +8,14 @@ Plataforma interactiva de monitoreo, análisis hidrodinámico de propagación de
 
 ## Ejecución Rápida
 
-1. **Iniciar el Backend FastAPI** (en `/home/carlos/proyecto-orinoco-backend`, puerto `8000`):
+1. **Iniciar el Backend FastAPI** (puerto `8000`):
    ```bash
-   cd /home/carlos/proyecto-orinoco-backend
-   ./.venv/bin/uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+   uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
-2. **Iniciar el Frontend Next.js** (en `/home/carlos/proyecto-orinoco-frontend`, puerto `3000`):
+2. **Iniciar el Frontend Next.js** (puerto `3000`):
    ```bash
-   cd /home/carlos/proyecto-orinoco-frontend
+   cd frontend
    npm run dev
    ```
 
