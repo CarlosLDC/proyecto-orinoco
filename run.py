@@ -10,11 +10,18 @@ import shutil
 import subprocess
 import signal
 import time
+import threading
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
 IS_WINDOWS = os.name == "nt"
+
+def get_npm_cmd() -> str:
+    """Devuelve el comando npm adecuado para el sistema."""
+    if IS_WINDOWS:
+        return "npm.cmd" if shutil.which("npm.cmd") else "npm"
+    return "npm"
 
 def get_venv_python() -> Path:
     """Devuelve la ruta al ejecutable de Python del entorno virtual según el SO."""
@@ -24,11 +31,27 @@ def get_venv_python() -> Path:
         candidate = ROOT_DIR / ".venv" / "bin" / "python"
     return candidate
 
-def get_npm_cmd() -> str:
-    """Devuelve el comando npm adecuado para el sistema."""
-    if IS_WINDOWS:
-        return "npm.cmd" if shutil.which("npm.cmd") else "npm"
-    return "npm"
+def open_browser_when_ready(url: str, timeout: float = 30.0):
+    """Espera a que Next.js responda y abre el navegador automáticamente."""
+    import urllib.request
+    import webbrowser
+
+    def _probe():
+        start = time.time()
+        while time.time() - start < timeout:
+            try:
+                with urllib.request.urlopen(url, timeout=1.0) as resp:
+                    if resp.status == 200:
+                        time.sleep(0.3)
+                        print(f"\n🚀 Abriendo automáticamente la pestaña en el navegador: {url}")
+                        webbrowser.open(url)
+                        return
+            except Exception:
+                time.sleep(0.4)
+        # Timeout: intentar abrirlo de todas formas
+        webbrowser.open(url)
+
+    threading.Thread(target=_probe, daemon=True).start()
 
 def kill_process_tree(proc: subprocess.Popen):
     """Mata un proceso y todos sus subprocesos hijos de forma limpia y cruzada."""
@@ -150,6 +173,9 @@ def cmd_dev():
             cwd=str(FRONTEND_DIR),
             preexec_fn=preexec,
         )
+
+        # 3. Abrir navegador automáticamente cuando el frontend esté listo
+        open_browser_when_ready("http://localhost:3000")
 
         # Esperar a que alguno termine o se presione Ctrl+C
         while True:

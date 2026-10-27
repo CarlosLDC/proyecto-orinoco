@@ -58,3 +58,10 @@ def test_wave_propagation():
     assert data["max_lag"] == 25
     assert len(data["pairs"]) == 6
     assert "peak_lag_diferencia" in data["pairs"][0]
+
+def test_dev_watcher_endpoints():
+    # Test heartbeat endpoint
+    res_hb = client.post("/api/dev/heartbeat", json={"tab_id": "test_tab_123"})
+    assert res_hb.status_code == 200
+    assert res_hb.json()["status"] == "ok"
+    assert res_hb.json()["active_tabs"] >= 1

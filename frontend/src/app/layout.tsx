@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { DevLifecycleWatcher } from "@/components/DevLifecycleWatcher";
 
 export const metadata: Metadata = {
   title: "Orinoco HydroForecast | Predicción Hidrométrica del Río Orinoco",
@@ -15,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark" suppressHydrationWarning>
       <body className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#060c18] dark:text-slate-100">
+        <DevLifecycleWatcher />
         {children}
       </body>
     </html>

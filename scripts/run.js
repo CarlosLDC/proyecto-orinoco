@@ -136,6 +136,45 @@ function cmdSetup() {
   console.log('  npm run dev\n');
 }
 
+function openBrowser(url) {
+  console.log(`\n🚀 Abriendo automáticamente la pestaña en el navegador: ${url}`);
+  if (IS_WIN) {
+    spawn('cmd.exe', ['/c', 'start', '""', url], { stdio: 'ignore', detached: true });
+  } else if (process.platform === 'darwin') {
+    spawn('open', [url], { stdio: 'ignore', detached: true });
+  } else {
+    spawn('xdg-open', [url], { stdio: 'ignore', detached: true });
+  }
+}
+
+function waitForServerAndOpen(url, maxWaitMs = 30000) {
+  const http = require('http');
+  const startTime = Date.now();
+  let opened = false;
+
+  const probe = () => {
+    if (opened) return;
+    if (Date.now() - startTime > maxWaitMs) {
+      openBrowser(url);
+      opened = true;
+      return;
+    }
+
+    const req = http.get(url, (res) => {
+      if (!opened) {
+        opened = true;
+        setTimeout(() => openBrowser(url), 300);
+      }
+    });
+
+    req.on('error', () => {
+      setTimeout(probe, 350);
+    });
+  };
+
+  setTimeout(probe, 600);
+}
+
 function cmdDev() {
   const venvPython = getVenvPython();
   if (!fs.existsSync(venvPython)) {
@@ -156,7 +195,8 @@ function cmdDev() {
   console.log('='.repeat(60));
   console.log('  🌐 Backend API:  http://localhost:8000  (Docs: http://localhost:8000/docs)');
   console.log('  💻 Frontend Web: http://localhost:3000');
-  console.log('  Presiona Ctrl + C para detener ambos servidores.');
+  console.log('  💡 La pestaña del navegador se abrirá automáticamente.');
+  console.log('  💡 Al cerrar la pestaña (o presionar Ctrl + C), los servidores se detendrán.');
   console.log('='.repeat(60) + '\n');
 
   let backendProc = null;
@@ -193,9 +233,8 @@ function cmdDev() {
     }
   );
 
-  backendProc.on('exit', (code) => {
-    if (!isShuttingDown && code !== 0) {
-      console.log(`\n⚠️  El backend se cerró con código ${code}`);
+  backendProc.on('exit', () => {
+    if (!isShuttingDown) {
       cleanup();
     }
   });
@@ -208,12 +247,14 @@ function cmdDev() {
     detached: !IS_WIN,
   });
 
-  frontendProc.on('exit', (code) => {
-    if (!isShuttingDown && code !== 0) {
-      console.log(`\n⚠️  El frontend se cerró con código ${code}`);
+  frontendProc.on('exit', () => {
+    if (!isShuttingDown) {
       cleanup();
     }
   });
+
+  // 3. Esperar que el frontend responda y abrir navegador
+  waitForServerAndOpen('http://localhost:3000');
 }
 
 function cmdBackend() {
