@@ -12,51 +12,40 @@ Este repositorio unifica:
 
 ---
 
-## ⚡ Inicio Rápido Multiplataforma (Windows, Linux, macOS)
+## ⚡ Inicio Rápido (Multiplataforma por Defecto)
 
-### 1. Instalar todas las dependencias (Backend + Frontend)
-Prepara el entorno virtual de Python (`.venv`), dependencias de `requirements.txt` y paquetes de Node.js en `frontend/`:
+Gracias a la automatización del monorepo, **los mismos comandos funcionan idénticamente en Windows, Linux y macOS**:
 
-* **En Windows (CMD / PowerShell / Doble Clic):**
-  ```cmd
-  setup.bat
-  :: O también: python run.py setup
-  ```
+### 1. Descargar e instalar todo
+Prepara el entorno virtual de Python (`.venv`), instala las dependencias de `requirements.txt` e instala los paquetes de Node.js en `frontend/`:
 
-* **En Linux / macOS:**
-  ```bash
-  make install
-  # O también: python3 run.py setup   o   ./setup.sh
-  ```
+```bash
+npm run setup
+```
 
-### 2. Levantar ambos servidores en simultáneo
-Inicia FastAPI en `http://localhost:8000` (docs en `/docs`) y Next.js en `http://localhost:3000` en paralelo con recarga en vivo:
+### 2. Levantar ambos servidores en paralelo
+Inicia simultáneamente **FastAPI** en `http://localhost:8000` (documentación en `/docs`) y **Next.js** en `http://localhost:3000`:
 
-* **En Windows (CMD / PowerShell / Doble Clic):**
-  ```cmd
-  dev.bat
-  :: O también: python run.py dev
-  ```
+```bash
+npm run dev
+```
 
-* **En Linux / macOS:**
-  ```bash
-  make dev
-  # O también: python3 run.py dev   o   ./dev.sh
-  ```
-
-*(Al presionar `Ctrl + C`, ambos servidores se detienen de forma limpia y liberan los puertos tanto en Windows como en Linux/macOS).*
+> [!TIP]
+> **Detención limpia:** Al presionar `Ctrl + C`, se detienen de forma ordenada tanto el frontend como el backend (liberando automáticamente los puertos en Windows, Linux y macOS).
 
 ---
 
 ## 🛠️ Comandos Disponibles
 
-| Tarea | En Windows | En Linux / macOS | Vía Python (Cualquier SO) |
-|---|---|---|---|
-| **Instalar todo** | `setup.bat` | `make install` | `python run.py setup` |
-| **Levantar ambos servidores** | `dev.bat` | `make dev` | `python run.py dev` |
-| **Solo Backend** | `python run.py backend` | `make backend` | `python run.py backend` |
-| **Solo Frontend** | `cd frontend && npm run dev` | `make frontend` | `python run.py frontend` |
-| **Correr Pruebas (Pytest)** | `python run.py test` | `make test` | `python run.py test` |
+Todos se ejecutan desde la raíz del proyecto y funcionan en cualquier sistema operativo:
+
+| Comando | Acción |
+|---|---|
+| `npm run setup` | Instala todas las dependencias del Backend (Python) y Frontend (Node.js) |
+| `npm run dev` | Inicia Backend (`:8000`) y Frontend (`:3000`) en simultáneo con recarga en vivo |
+| `npm run backend` | Inicia únicamente el servidor FastAPI |
+| `npm run frontend` | Inicia únicamente la aplicación Next.js |
+| `npm run test` | Ejecuta las pruebas unitarias del backend con `pytest` |
 
 ---
 
