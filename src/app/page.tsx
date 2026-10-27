@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Waves, Sun, Moon, BookOpen } from "lucide-react";
+import { Waves, Sun, Moon } from "lucide-react";
 import {
   api,
   StationMetadata,
@@ -89,21 +89,18 @@ export default function OrinocoDashboardPage() {
                 { id: "forecast", label: "Pronóstico" },
                 { id: "metrics", label: "Métricas" },
                 { id: "wave", label: "Propagación" },
-                { id: "didactic", label: "Guía Didáctica", highlight: true },
+                { id: "didactic", label: "Guía" },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${
+                  className={`rounded-md px-3 py-1 font-medium transition-colors ${
                     activeTab === tab.id
                       ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
-                      : tab.highlight
-                      ? "text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
                       : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   }`}
                 >
-                  {tab.highlight && <BookOpen className="h-3.5 w-3.5" />}
                   {tab.label}
                 </button>
               ))}
