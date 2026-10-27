@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, RotateCcw } from "lucide-react";
 import { MODEL_COLORS, StationMetadata, MetricItem } from "@/lib/api";
 
 interface DidacticGuideSectionProps {
@@ -12,70 +12,52 @@ interface DidacticGuideSectionProps {
   onNavigateTab: (tab: "forecast" | "metrics" | "wave") => void;
 }
 
-type StepId =
-  | "uso"
-  | "datos"
-  | "leakage"
-  | "features"
-  | "modelos"
-  | "metricas";
+type ChapterId =
+  | "intuicion"
+  | "basura"
+  | "trampa"
+  | "senales"
+  | "cerebros"
+  | "notas";
 
-const STEPS: { id: StepId; num: string; label: string }[] = [
-  { id: "uso", num: "01", label: "Uso" },
-  { id: "datos", num: "02", label: "Datos" },
-  { id: "leakage", num: "03", label: "Partición" },
-  { id: "features", num: "04", label: "Variables" },
-  { id: "modelos", num: "05", label: "Modelos" },
-  { id: "metricas", num: "06", label: "Métricas" },
+const CHAPTERS: { id: ChapterId; num: string; title: string; hook: string }[] = [
+  {
+    id: "intuicion",
+    num: "01",
+    title: "¿Qué es predecir?",
+    hook: "La física de una bañera gigante",
+  },
+  {
+    id: "basura",
+    num: "02",
+    title: "Datos envenenados",
+    hook: "Cuando un error humano engaña a la IA",
+  },
+  {
+    id: "trampa",
+    num: "03",
+    title: "La máquina del tiempo",
+    hook: "Por qué no puedes barajar los días",
+  },
+  {
+    id: "senales",
+    num: "04",
+    title: "Traducir el mundo",
+    hook: "Cómo un algoritmo siente el calendario y la distancia",
+  },
+  {
+    id: "cerebros",
+    num: "05",
+    title: "7 formas de pensar",
+    hook: "De una regla matemática a un transformer",
+  },
+  {
+    id: "notas",
+    num: "06",
+    title: "¿Quién ganó el examen?",
+    hook: "Por qué equivocarse por 1 metro duele más que 10 errores de 10 cm",
+  },
 ];
-
-const MODELS_INFO: Record<
-  string,
-  { family: string; summary: string; detail: string }
-> = {
-  LSTM: {
-    family: "Deep Learning (PyTorch)",
-    summary: "Red neuronal recurrente con compuertas de memoria.",
-    detail:
-      "Lee una ventana de días pasados y usa compuertas de olvido y entrada para retener tendencias largas (la gran crecida anual) e ignorar fluctuaciones de un solo día. Predice los 35 días de golpe (Multi-Output).",
-  },
-  "Bi-LSTM": {
-    family: "Deep Learning (PyTorch)",
-    summary: "Doble lectura (adelante y atrás) sobre el pasado conocido.",
-    detail:
-      "Recorre la ventana histórica en ambos sentidos (t-30 → t y t → t-30) únicamente sobre días ya ocurridos. Esto le permite contextualizar mejor la pendiente del río antes de proyectar los 35 días futuros.",
-  },
-  Transformer: {
-    family: "Deep Learning (PyTorch)",
-    summary: "Mecanismo de atención directa entre fechas clave.",
-    detail:
-      "En lugar de leer día por día en fila, usa Atención Multi-Cabezal (Multi-Head Attention) para conectar directamente el nivel actual con lo que ocurrió hace exactamente 7, 14 o 17 días aguas arriba.",
-  },
-  ARIMAX: {
-    family: "Estadístico Exógeno",
-    summary: "Autorregresión clásica potenciada con variables aguas arriba.",
-    detail:
-      "Combina la inercia propia de la estación (AR), la diferencia diaria (I) y los errores recientes (MA) con variables exógenas (X): el ciclo anual (seno/coseno) y los niveles de Puerto Ayacucho y Caicara en t-7, t-14 y t-17.",
-  },
-  AutoARIMA: {
-    family: "Estadístico Univariado",
-    summary: "Solo mira el pasado de su propia estación.",
-    detail:
-      "Encuentra automáticamente los parámetros óptimos (p, d, q), pero ignora lo que pasa aguas arriba. Compararlo contra ARIMAX permite ver cuánto aporta la física del río al pronóstico.",
-  },
-  TimesFM: {
-    family: "Modelo Fundacional (Google)",
-    summary: "Inferencia Zero-Shot sin entrenamiento local.",
-    detail:
-      "Preentrenado por Google con miles de millones de series temporales del mundo real. Recibe directamente entre 256 y 512 días de historia del Orinoco y proyecta los 35 días reconociendo patrones estacionales al instante.",
-  },
-  SimpleML: {
-    family: "Baseline (Excel original)",
-    summary: "Punto de referencia precalculado a superar.",
-    detail:
-      "Generado con la extensión 'Simple ML for Sheets' en el archivo original antes de corregir errores de datos ni incluir rezagos espaciales. Es la línea roja punteada que nuestros modelos buscan vencer.",
-  },
-};
 
 export default function DidacticGuideSection({
   stations,
@@ -83,616 +65,754 @@ export default function DidacticGuideSection({
   onSelectStation,
   onNavigateTab,
 }: DidacticGuideSectionProps) {
-  const [step, setStep] = useState<StepId>("uso");
+  const [chapter, setChapter] = useState<ChapterId>("intuicion");
 
-  // Controles interactivos ligeros
-  const [doy, setDoy] = useState<number>(225);
-  const [surge, setSurge] = useState<number>(2.0);
+  // --- Cap 01: El juego de predecir la cota ---
+  const [userGuess, setUserGuess] = useState<number>(5.2);
+  const [guessSubmitted, setGuessSubmitted] = useState<boolean>(false);
+  const targetTomorrow = 5.08; // El río viene bajando suavemente en estiaje
+
+  // --- Cap 02: El error humano ---
+  const [fixTypo, setFixTypo] = useState<boolean>(false);
+
+  // --- Cap 03: Barajar vs Cronológico ---
+  const [shuffledView, setShuffledView] = useState<boolean>(false);
+
+  // --- Cap 04: El círculo del tiempo ---
+  const [daySlider, setDaySlider] = useState<number>(364); // 30 dic
+
+  // --- Cap 05: El modelo activo ---
   const [activeModel, setActiveModel] = useState<string>("LSTM");
-  const [windowL, setWindowL] = useState<14 | 30 | 60>(30);
-  const [spikeError, setSpikeError] = useState<boolean>(false);
 
-  const sinDoy = Math.sin((2 * Math.PI * doy) / 365.25);
-  const cosDoy = Math.cos((2 * Math.PI * doy) / 365.25);
+  // --- Cap 06: El simulador de castigo al error ---
+  const [errorProfile, setErrorProfile] = useState<"uniforme" | "catastrofico">("uniforme");
 
-  const currentStepIdx = STEPS.findIndex((s) => s.id === step);
-  const nextStep = STEPS[currentStepIdx + 1];
+  const currentIdx = CHAPTERS.findIndex((c) => c.id === chapter);
+  const nextChapter = CHAPTERS[currentIdx + 1];
+
+  // Cálculo trigonométrico interactivo
+  const sinVal = Math.sin((2 * Math.PI * daySlider) / 365.25);
+  const cosVal = Math.cos((2 * Math.PI * daySlider) / 365.25);
 
   return (
     <div className="rounded-xl border border-slate-200/70 bg-white p-5 dark:border-slate-800/80 dark:bg-slate-900/40">
-      {/* Header + Minimal Step Bar */}
+      {/* Header con índice visual claro */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800/70">
         <div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-500">
+            Aprende Machine Learning desde cero
+          </span>
           <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-            Guía Didáctica de Machine Learning
+            La física y la matemática del Río Orinoco explicadas sin rodeos
           </h2>
-          <p className="text-xs text-slate-400">
-            Cómo funciona el proyecto paso a paso, desde los datos crudos hasta la inferencia
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 p-0.5 text-xs dark:border-slate-800">
-          {STEPS.map((s) => {
-            const active = step === s.id;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setStep(s.id)}
-                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
-                  active
-                    ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                }`}
-              >
-                <span className="mr-1 opacity-60">{s.num}</span>
-                {s.label}
-              </button>
-            );
-          })}
+          {CHAPTERS.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setChapter(c.id)}
+              className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                chapter === c.id
+                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              }`}
+            >
+              <span className="mr-1 opacity-50">{c.num}</span>
+              {c.title}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* =====================================================================
-          01. USO DE LA PLATAFORMA
-         ===================================================================== */}
-      {step === "uso" && (
-        <div className="mt-5 space-y-5">
-          <div className="max-w-2xl space-y-1">
+      {/* =========================================================================
+          CAPÍTULO 01: LA INTUICIÓN FUNDAMENTAL
+         ========================================================================= */}
+      {chapter === "intuicion" && (
+        <div className="mt-5 space-y-6">
+          <div className="max-w-3xl space-y-2">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              ¿Qué hace esta plataforma y cómo explorarla?
+              Ponte en los zapatos de la máquina: ¿cómo predecirías tú el río mañana?
             </h3>
-            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              Estimamos el nivel diario del Río Orinoco (cota en metros sobre el nivel del mar,{" "}
-              <code className="text-slate-700 dark:text-slate-200">m s.n.m.</code>) para un
-              horizonte futuro de <strong>35 días</strong> en 4 estaciones sucesivas, comparando 7
-              modelos distintos.
+            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              Imagina que estás parado en el malecón de Ciudad Bolívar. El río Orinoco no es una
+              lotería ni una acción de bolsa que sube o baja por pánico. Es una gigantesca masa de
+              agua de miles de kilómetros gobernada por la inercia:
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border border-slate-200/70 p-3.5 dark:border-slate-800/80">
-              <span className="font-mono text-[11px] text-sky-500">PASO 1</span>
-              <h4 className="mt-1 text-xs font-semibold text-slate-900 dark:text-white">
-                Selecciona una estación
-              </h4>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Las 4 tarjetas superiores siguen el curso del agua: desde{" "}
-                <strong>Puerto Ayacucho</strong> (origen) hasta <strong>Palúa</strong> (+17 días de
-                retardo).
-              </p>
-              <div className="mt-2.5 flex flex-wrap gap-1">
-                {stations.map((st) => (
+          {/* Dinámica interactiva: Haz tu primera predicción manual */}
+          <div className="rounded-lg border border-slate-200/80 p-4 dark:border-slate-800">
+            <span className="text-[11px] font-semibold text-sky-500 uppercase tracking-wide">
+              Experimento mental #1
+            </span>
+            <h4 className="mt-1 text-xs font-semibold text-slate-900 dark:text-white">
+              Si el río midió 5.30 m anteayer y 5.18 m ayer... ¿cuánto medirá hoy?
+            </h4>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Estamos en febrero (época seca). El río viene bajando suavemente. Arrastra la barra y
+              haz tu estimación:
+            </p>
+
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex-1">
+                <input
+                  type="range"
+                  min={4.5}
+                  max={6.0}
+                  step={0.01}
+                  value={userGuess}
+                  disabled={guessSubmitted}
+                  onChange={(e) => setUserGuess(parseFloat(e.target.value))}
+                  className="w-full accent-sky-500"
+                />
+                <div className="mt-1 flex justify-between text-[11px] font-mono text-slate-400">
+                  <span>4.50 m (caída brusca)</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">
+                    Tu apuesta: {userGuess.toFixed(2)} m
+                  </span>
+                  <span>6.00 m (crecida irreal)</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {!guessSubmitted ? (
                   <button
-                    key={st.id}
                     type="button"
-                    onClick={() => onSelectStation(st.id)}
-                    className={`rounded px-2 py-0.5 text-[11px] font-medium transition ${
-                      selectedStation === st.id
-                        ? "bg-sky-500/15 text-sky-500"
-                        : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                    }`}
+                    onClick={() => setGuessSubmitted(true)}
+                    className="rounded-lg bg-sky-500 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-600"
                   >
-                    {st.name}
+                    Confirmar predicción
                   </button>
-                ))}
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setGuessSubmitted(false)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Probar otra vez
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-200/70 p-3.5 dark:border-slate-800/80">
-              <span className="font-mono text-[11px] text-sky-500">PASO 2</span>
-              <h4 className="mt-1 text-xs font-semibold text-slate-900 dark:text-white">
-                Explora el Pronóstico (35d)
-              </h4>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                La línea vertical marca el <code className="font-mono">2025-02-24</code>. A la
-                izquierda ves el nivel real; a la derecha, los 35 días predichos. Activa{" "}
-                <strong>Test Set</strong> para ver cómo rindió cada modelo en el pasado reciente.
-              </p>
-              <button
-                type="button"
-                onClick={() => onNavigateTab("forecast")}
-                className="mt-2.5 inline-flex items-center gap-1 text-xs font-medium text-sky-500 hover:underline"
-              >
-                Abrir Pronóstico <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
-
-            <div className="rounded-lg border border-slate-200/70 p-3.5 dark:border-slate-800/80">
-              <span className="font-mono text-[11px] text-sky-500">PASO 3</span>
-              <h4 className="mt-1 text-xs font-semibold text-slate-900 dark:text-white">
-                Compara las Métricas
-              </h4>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Consulta el ranking objetivo en los 86 días de prueba ordenado de menor a mayor
-                error (<strong>RMSE</strong> en metros).
-              </p>
-              <button
-                type="button"
-                onClick={() => onNavigateTab("metrics")}
-                className="mt-2.5 inline-flex items-center gap-1 text-xs font-medium text-sky-500 hover:underline"
-              >
-                Abrir Métricas <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
-
-            <div className="rounded-lg border border-slate-200/70 p-3.5 dark:border-slate-800/80">
-              <span className="font-mono text-[11px] text-sky-500">PASO 4</span>
-              <h4 className="mt-1 text-xs font-semibold text-slate-900 dark:text-white">
-                Verifica la Onda Física
-              </h4>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Comprueba mediante correlación cruzada por qué las crecidas tardan 7, 14 y 17 días
-                en viajar aguas abajo.
-              </p>
-              <button
-                type="button"
-                onClick={() => onNavigateTab("wave")}
-                className="mt-2.5 inline-flex items-center gap-1 text-xs font-medium text-sky-500 hover:underline"
-              >
-                Abrir Propagación <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =====================================================================
-          02. LIMPIEZA Y AUDITORÍA DE DATOS
-         ===================================================================== */}
-      {step === "datos" && (
-        <div className="mt-5 space-y-5">
-          <div className="max-w-2xl space-y-1">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              Auditoría y Limpieza: corregir los datos antes de entrenar
-            </h3>
-            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              Un modelo solo es tan bueno como los datos que recibe. Al auditar el archivo Excel
-              original encontramos 4 problemas que distorsionaban el aprendizaje y los corregimos
-              reconstruyendo las 5.899 fechas (2009–2025) desde las matrices históricas.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-100 text-slate-400 dark:border-slate-800">
-                <tr>
-                  <th className="pb-2.5 font-medium">Anomalía detectada</th>
-                  <th className="pb-2.5 font-medium">Efecto en el dataset crudo</th>
-                  <th className="pb-2.5 font-medium">Solución en el pipeline</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                <tr>
-                  <td className="py-3 font-medium text-slate-900 dark:text-white">
-                    Desfase de 638 días (Ciudad Bolívar)
-                  </td>
-                  <td className="py-3 text-slate-500 dark:text-slate-400">
-                    Faltaba el <code className="font-mono">2020-01-01 (7.34m)</code>, corriendo
-                    2020–2021 un día hacia atrás y duplicando el <code className="font-mono">2021-12-31</code>.
-                  </td>
-                  <td className="py-3 text-emerald-600 dark:text-emerald-400">
-                    Reconstrucción directa desde las 4 hojas matrices (Día × Año).
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 font-medium text-slate-900 dark:text-white">
-                    Spikes de transcripción (Outliers)
-                  </td>
-                  <td className="py-3 text-slate-500 dark:text-slate-400">
-                    Salto irreal a <code className="font-mono">9.79m</code> en Palúa (2021-10-29) y
-                    escalón de +1m en Ciudad Bolívar (Ene 2019).
-                  </td>
-                  <td className="py-3 text-emerald-600 dark:text-emerald-400">
-                    Reemplazo por <code className="font-mono">NaN</code> e interpolación lineal.
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 font-medium text-slate-900 dark:text-white">
-                    Días bisiestos vacíos (29-Feb)
-                  </td>
-                  <td className="py-3 text-slate-500 dark:text-slate-400">
-                    3 valores nulos en Palúa (<code className="font-mono">2012, 2016, 2020</code>) y
-                    filas sobrantes en años no bisiestos.
-                  </td>
-                  <td className="py-3 text-emerald-600 dark:text-emerald-400">
-                    Filtro de fila 59 en años normales e interpolación en bisiestos.
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 font-medium text-slate-900 dark:text-white">
-                    Error puntual en Caicara
-                  </td>
-                  <td className="py-3 text-slate-500 dark:text-slate-400">
-                    El <code className="font-mono">2019-12-29</code> figuraba como{" "}
-                    <code className="font-mono">25.83m</code> en lugar de{" "}
-                    <code className="font-mono">25.91m</code>.
-                  </td>
-                  <td className="py-3 text-emerald-600 dark:text-emerald-400">
-                    Restaurado automáticamente desde la matriz de Caicara.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* =====================================================================
-          03. PARTICIÓN TEMPORAL Y PREVENCIÓN DE DATA LEAKAGE
-         ===================================================================== */}
-      {step === "leakage" && (
-        <div className="mt-5 space-y-5">
-          <div className="max-w-2xl space-y-1">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              Prevención de Fuga de Datos (Data Leakage)
-            </h3>
-            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              En series de tiempo está prohibido mezclar fechas al azar (<code className="font-mono">shuffle=False</code>).
-              Si un modelo ve datos de mañana para predecir ayer, hace trampa. Dividimos la serie en
-              4 bloques estrictamente cronológicos:
-            </p>
-          </div>
-
-          {/* Barra cronológica minimalista */}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
-            <div className="rounded-lg border border-slate-200/80 p-3 sm:col-span-5 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-900 dark:text-white">1. Train</span>
-                <span className="font-mono text-[11px] text-sky-500">2009 – 2023</span>
-              </div>
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                15 años donde el modelo aprende pesos y donde se ajusta (<code className="font-mono">.fit</code>)
-                el escalador.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-200/80 p-3 sm:col-span-3 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-900 dark:text-white">2. Validation</span>
-                <span className="font-mono text-[11px] text-purple-500">Ene–Nov 2024</span>
-              </div>
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                Ajuste de hiperparámetros y parada temprana (<em>Early Stopping</em>).
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-200/80 p-3 sm:col-span-2 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-900 dark:text-white">3. Test</span>
-                <span className="font-mono text-[11px] text-emerald-500">86 días</span>
-              </div>
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                Dic 2024 a 24-Feb-2025. Examen final para medir RMSE.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-sky-500/40 bg-sky-500/5 p-3 sm:col-span-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-sky-500">4. Forecast</span>
-                <span className="font-mono text-[11px] text-sky-500">35 días</span>
-              </div>
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                25-Feb a 31-Mar-2025. Inferencia a ciegas.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-slate-200/60 p-3 text-xs dark:border-slate-800/70">
-              <strong className="text-slate-900 dark:text-white">Escalado sin fuga:</strong>{" "}
-              <span className="text-slate-500 dark:text-slate-400">
-                El <code className="font-mono">StandardScaler</code> calcula media y desviación solo
-                en Train (2009–2023) para no filtrar máximos futuros.
-              </span>
-            </div>
-            <div className="rounded-lg border border-slate-200/60 p-3 text-xs dark:border-slate-800/70">
-              <strong className="text-slate-900 dark:text-white">Inferencia honesta a 35d:</strong>{" "}
-              <span className="text-slate-500 dark:text-slate-400">
-                Ningún rezago usa mediciones futuras que aún no ocurren; se predice en bloque
-                (Multi-Output) o recursivamente.
-              </span>
-            </div>
-            <div className="rounded-lg border border-slate-200/60 p-3 text-xs dark:border-slate-800/70">
-              <strong className="text-slate-900 dark:text-white">Control de Overfitting:</strong>{" "}
-              <span className="text-slate-500 dark:text-slate-400">
-                Si el error sigue bajando en Train pero sube en Validation, detenemos el
-                entrenamiento automáticamente.
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =====================================================================
-          04. VARIABLES Y FÍSICA DEL RÍO (FEATURE ENGINEERING)
-         ===================================================================== */}
-      {step === "features" && (
-        <div className="mt-5 space-y-5">
-          <div className="max-w-2xl space-y-1">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              Feature Engineering: traduciendo el calendario y la geografía a números
-            </h3>
-            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              Creamos dos grupos de variables predictoras: codificación cíclica anual para que el
-              modelo sepa en qué época de lluvias está, y rezagos espaciales (<code className="font-mono">lags</code>)
-              para anticipar la onda que baja desde Puerto Ayacucho.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* Control 1: Reloj Cíclico */}
-            <div className="rounded-lg border border-slate-200/80 p-4 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  1. Codificación Cíclica Anual (Seno / Coseno)
-                </span>
-                <span className="font-mono text-sky-500">Día {doy} / 365</span>
-              </div>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Une el 31 de diciembre (día 365) con el 1 de enero (día 1) sin saltos numéricos:
-              </p>
-
-              <input
-                type="range"
-                min={1}
-                max={365}
-                value={doy}
-                onChange={(e) => setDoy(Number(e.target.value))}
-                className="mt-3 w-full accent-sky-500"
-              />
-
-              <div className="mt-2 flex items-center justify-between rounded bg-slate-50 px-3 py-2 font-mono text-xs dark:bg-slate-900">
-                <span>
-                  sin_doy:{" "}
-                  <strong className="text-slate-900 dark:text-white">
-                    {sinDoy >= 0 ? `+${sinDoy.toFixed(3)}` : sinDoy.toFixed(3)}
+            {guessSubmitted && (
+              <div className="mt-4 rounded-lg bg-slate-50 p-3.5 text-xs text-slate-600 dark:bg-slate-900/80 dark:text-slate-300">
+                <p>
+                  El valor real medido fue <strong>{targetTomorrow.toFixed(2)} m</strong> (siguió
+                  su pendiente natural cayendo 10 cm). Tu error fue de solo{" "}
+                  <strong className="text-sky-500 font-mono">
+                    {Math.abs(userGuess - targetTomorrow).toFixed(2)} m
                   </strong>
-                </span>
-                <span>
-                  cos_doy:{" "}
-                  <strong className="text-slate-900 dark:text-white">
-                    {cosDoy >= 0 ? `+${cosDoy.toFixed(3)}` : cosDoy.toFixed(3)}
-                  </strong>
-                </span>
+                  .
+                </p>
+                <p className="mt-1.5 text-slate-500 dark:text-slate-400">
+                  Acabas de aplicar sin darte cuenta los tres pilares del Machine Learning:
+                  <strong> inercia autorregresiva</strong> (miraste ayer),
+                  <strong> tendencia local</strong> (viste que bajaba) y
+                  <strong> contexto estacional</strong> (sabías que en febrero no llueve a cántaros).
+                  Una red neuronal hace exactamente eso, pero calculando millones de correlaciones
+                  simultáneas.
+                </p>
               </div>
+            )}
+          </div>
+
+          {/* Las dos fuentes de información del río */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-slate-200/70 p-3.5 dark:border-slate-800/80">
+              <strong className="text-xs font-semibold text-slate-900 dark:text-white">
+                1. La memoria local (El agua que ya está aquí)
+              </strong>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Si hoy el río está en 10 metros, mañana es imposible físicamente que esté en 3 metros
+                o en 20 metros. El agua tarda días en drenar. El pasado inmediato de la misma
+                estación es el 80% de la respuesta.
+              </p>
             </div>
 
-            {/* Control 2: Lags de Propagación */}
-            <div className="rounded-lg border border-slate-200/80 p-4 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  2. Rezagos Aguas Arriba (Lags 7, 14 y 17 días)
-                </span>
-                <span className="font-mono text-sky-500">+{surge.toFixed(1)} m en origen</span>
-              </div>
+            <div className="rounded-lg border border-slate-200/70 p-3.5 dark:border-slate-800/80">
+              <strong className="text-xs font-semibold text-slate-900 dark:text-white">
+                2. El espía aguas arriba (La ola que viene en camino)
+              </strong>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Simula una subida hoy en Puerto Ayacucho y su llegada escalonada aguas abajo:
+                Si cae un aguacero torrencial en la selva de Puerto Ayacucho, esa masa de agua tardará
+                <strong> 14 días</strong> en llegar a Ciudad Bolívar. Saber qué pasó hace 2 semanas
+                aguas arriba es como tener una ventana al futuro.
               </p>
-
-              <input
-                type="range"
-                min={0.5}
-                max={3.5}
-                step={0.1}
-                value={surge}
-                onChange={(e) => setSurge(Number(e.target.value))}
-                className="mt-3 w-full accent-sky-500"
-              />
-
-              <div className="mt-2 grid grid-cols-4 gap-1.5 text-center font-mono text-[11px]">
-                <div className="rounded bg-slate-50 py-1.5 dark:bg-slate-900">
-                  <div className="text-slate-400">Hoy (0d)</div>
-                  <div className="font-semibold text-sky-500">+{surge.toFixed(1)}m</div>
-                </div>
-                <div className="rounded bg-slate-50 py-1.5 dark:bg-slate-900">
-                  <div className="text-slate-400">+7d Caicara</div>
-                  <div className="font-semibold text-slate-800 dark:text-slate-200">
-                    +{(surge * 0.72).toFixed(1)}m
-                  </div>
-                </div>
-                <div className="rounded bg-slate-50 py-1.5 dark:bg-slate-900">
-                  <div className="text-slate-400">+14d Bolívar</div>
-                  <div className="font-semibold text-slate-800 dark:text-slate-200">
-                    +{(surge * 0.58).toFixed(1)}m
-                  </div>
-                </div>
-                <div className="rounded bg-slate-50 py-1.5 dark:bg-slate-900">
-                  <div className="text-slate-400">+17d Palúa</div>
-                  <div className="font-semibold text-slate-800 dark:text-slate-200">
-                    +{(surge * 0.48).toFixed(1)}m
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* =====================================================================
-          05. LOS 7 MODELOS Y VENTANAS DESLIZANTES
-         ===================================================================== */}
-      {step === "modelos" && (
-        <div className="mt-5 space-y-5">
-          {/* Selector de modelo tipo píldora igual al gráfico */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {Object.keys(MODELS_INFO).map((m) => {
-              const active = activeModel === m;
-              const color = MODEL_COLORS[m] || "#94a3b8";
-              return (
+      {/* =========================================================================
+          CAPÍTULO 02: DATOS ENVENENADOS (GIGO)
+         ========================================================================= */}
+      {chapter === "basura" && (
+        <div className="mt-5 space-y-6">
+          <div className="max-w-3xl space-y-2">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              Una IA no tiene sentido común: aprenderá ciegamente lo que le des
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              En Machine Learning existe la máxima <em>&quot;Garbage In, Garbage Out&quot;</em> (si
+              metes basura, obtienes basura). Los modelos no &quot;sienten&quot; el río; solo buscan
+              fórmulas matemáticas que unan números. Mira este caso real que encontramos en el
+              dataset original:
+            </p>
+          </div>
+
+          {/* Interactivo de Outlier: Haz clic para reparar */}
+          <div className="rounded-lg border border-slate-200/80 p-4 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-amber-500 uppercase tracking-wide">
+                Caso real: Estación Palúa (29 de octubre de 2021)
+              </span>
+              <button
+                type="button"
+                onClick={() => setFixTypo(!fixTypo)}
+                className={`rounded px-2.5 py-1 text-xs font-semibold transition ${
+                  fixTypo
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    : "bg-amber-500 text-white hover:bg-amber-600"
+                }`}
+              >
+                {fixTypo ? "✓ Dato Limpio (Interpolado)" : "Corregir dedazo humano"}
+              </button>
+            </div>
+
+            {/* Simulación visual de la serie con el error */}
+            <div className="mt-4 grid grid-cols-5 gap-2 text-center text-xs font-mono">
+              <div className="rounded bg-slate-50 p-2 dark:bg-slate-900">
+                <div className="text-[10px] text-slate-400">27-Oct</div>
+                <div className="mt-1 font-semibold text-slate-700 dark:text-slate-200">8.65 m</div>
+              </div>
+              <div className="rounded bg-slate-50 p-2 dark:bg-slate-900">
+                <div className="text-[10px] text-slate-400">28-Oct</div>
+                <div className="mt-1 font-semibold text-slate-700 dark:text-slate-200">8.73 m</div>
+              </div>
+              <div
+                className={`rounded p-2 transition ${
+                  fixTypo
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold"
+                    : "bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold ring-2 ring-rose-500"
+                }`}
+              >
+                <div className="text-[10px] opacity-75">29-Oct</div>
+                <div className="mt-1">{fixTypo ? "8.79 m" : "9.79 m (!)"}</div>
+              </div>
+              <div className="rounded bg-slate-50 p-2 dark:bg-slate-900">
+                <div className="text-[10px] text-slate-400">30-Oct</div>
+                <div className="mt-1 font-semibold text-slate-700 dark:text-slate-200">8.86 m</div>
+              </div>
+              <div className="rounded bg-slate-50 p-2 dark:bg-slate-900">
+                <div className="text-[10px] text-slate-400">31-Oct</div>
+                <div className="mt-1 font-semibold text-slate-700 dark:text-slate-200">8.92 m</div>
+              </div>
+            </div>
+
+            <div className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              {!fixTypo ? (
+                <p>
+                  ⚠️ <strong>¿Qué pasó aquí?</strong> Un transcriptor humano presionó el{" "}
+                  <code className="font-mono text-rose-500 font-bold">9</code> en vez del{" "}
+                  <code className="font-mono text-slate-800 dark:text-slate-200 font-bold">8</code>.
+                  El río subió 1 metro entero en 24 horas y al día siguiente cayó 1 metro. Si le
+                  pasas esto a una red neuronal, aprenderá que un río de 3 kilómetros de ancho puede
+                  comportarse como un resorte loco.
+                </p>
+              ) : (
+                <p>
+                  ✅ <strong>Reparado con sentido físico:</strong> Borramos el valor corrupto y
+                  trazamos una línea recta entre el día anterior (8.73m) y el posterior (8.86m).
+                  Ahora la red neuronal aprenderá la suave curva natural del río.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* El caso del corrimiento de 638 días */}
+          <div className="rounded-lg border border-slate-200/70 p-3.5 text-xs text-slate-600 dark:border-slate-800/80 dark:text-slate-300">
+            <h4 className="font-semibold text-slate-900 dark:text-white">
+              El fantasma de Ciudad Bolívar: un olvido que desfasó 2 años enteros
+            </h4>
+            <p className="mt-1 text-slate-500 dark:text-slate-400">
+              En la hoja de Excel donde pegaron los datos a mano faltaba una sola fecha: el 1 de enero
+              de 2020. Al pegar hacia abajo, los 638 días siguientes quedaron corridos un casillero
+              hacia atrás. El modelo creía que el río crecía en fechas donde en realidad ya estaba
+              bajando. Por eso descartamos esa hoja y reconstruimos todo matemáticamente desde las
+              hojas de registro primarias.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          CAPÍTULO 03: LA MÁQUINA DEL TIEMPO (DATA LEAKAGE)
+         ========================================================================= */}
+      {chapter === "trampa" && (
+        <div className="mt-5 space-y-6">
+          <div className="max-w-3xl space-y-2">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              ¿Por qué en series de tiempo está terminantemente prohibido barajar?
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              En problemas típicos de machine learning (como reconocer si una foto es un perro o un
+              gato), mezclas todas las fotos como una baraja de cartas antes de entrenar. Si haces eso
+              con un río, creas una paradoja temporal:
+            </p>
+          </div>
+
+          {/* Demostración interactiva: Barajar vs Cronológico */}
+          <div className="rounded-lg border border-slate-200/80 p-4 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-sky-500 uppercase tracking-wide">
+                Simulador de examen
+              </span>
+              <button
+                type="button"
+                onClick={() => setShuffledView(!shuffledView)}
+                className="rounded px-2.5 py-1 text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+              >
+                {shuffledView ? "Ver orden real cronológico" : "Simular trampa (Barajar fechas)"}
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-3 text-xs">
+              {!shuffledView ? (
+                <>
+                  <div className="rounded border border-sky-500/40 bg-sky-500/5 p-3">
+                    <div className="font-semibold text-sky-600 dark:text-sky-400">
+                      1. Entrenamiento (El Pasado)
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-400 mt-0.5">2009 – 2023</div>
+                    <p className="mt-2 text-slate-500 dark:text-slate-400">
+                      El modelo solo estudia libros de historia cerrados. Jamás ha visto qué pasó en
+                      2024 ni 2025.
+                    </p>
+                  </div>
+                  <div className="rounded border border-slate-200 p-3 dark:border-slate-800">
+                    <div className="font-semibold text-slate-900 dark:text-white">
+                      2. Validación (Simulacro)
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-400 mt-0.5">Ene – Nov 2024</div>
+                    <p className="mt-2 text-slate-500 dark:text-slate-400">
+                      Simulamos que estamos en 2024 para ajustar la red sin quemar las preguntas del
+                      examen final.
+                    </p>
+                  </div>
+                  <div className="rounded border border-emerald-500/40 bg-emerald-500/5 p-3">
+                    <div className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      3. Examen Final (El Futuro)
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-400 mt-0.5">Dic 24 – Feb 25</div>
+                    <p className="mt-2 text-slate-500 dark:text-slate-400">
+                      86 días totalmente ciegos. Aquí descubrimos si aprendió la física o si solo era
+                      un loro repitiendo.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="sm:col-span-3 rounded bg-rose-500/10 p-3 text-rose-600 dark:text-rose-400">
+                  <strong>🚨 Trampa detectada (Data Leakage):</strong> Si barajamos los días, el
+                  modelo usará el día 15 de marzo de 2024 para adivinar el 14 de marzo de 2024. ¡Es
+                  como hacer un examen con las respuestas anotadas en la mano! En el laboratorio te
+                  dará 99.9% de precisión, pero al ponerlo a predecir el futuro real fracasará por
+                  completo.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200/70 p-3.5 text-xs text-slate-600 dark:border-slate-800/80 dark:text-slate-300">
+            <strong className="text-slate-900 dark:text-white">
+              La regla de los 35 días a ciegas:
+            </strong>{" "}
+            Cuando hoy es 24 de febrero y queremos predecir hasta el 31 de marzo, no podemos usar la
+            medición real de mañana para predecir pasado mañana, porque mañana aún no ha ocurrido.
+            Nuestros modelos lanzan los 35 días en un solo disparo simultáneo o van alimentando la
+            cola con sus propias estimaciones previas.
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          CAPÍTULO 04: TRADUCIR EL MUNDO (FEATURE ENGINEERING)
+         ========================================================================= */}
+      {chapter === "senales" && (
+        <div className="mt-5 space-y-6">
+          <div className="max-w-3xl space-y-2">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              ¿Cómo le dices a una máquina qué día del año es sin confundirla?
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              Si le dices al modelo que hoy es el día 365 (31 de diciembre) y mañana es el día 1 (1
+              de enero), la máquina pensará que hubo un salto catastrófico de 364 unidades de
+              distancia, cuando en realidad pasaron solo 24 horas. Para resolverlo usamos la magia de
+              la trigonometría:
+            </p>
+          </div>
+
+          {/* El reloj circular interactivo */}
+          <div className="rounded-lg border border-slate-200/80 p-4 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-sky-500 uppercase tracking-wide">
+                El reloj estacional del Orinoco
+              </span>
+              <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                Día {daySlider} de 365
+              </span>
+            </div>
+
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Mueve el control hasta el día 365 y luego al día 1. Observa cómo los números son casi
+              idénticos:
+            </p>
+
+            <input
+              type="range"
+              min={1}
+              max={365}
+              value={daySlider}
+              onChange={(e) => setDaySlider(parseInt(e.target.value))}
+              className="mt-3 w-full accent-sky-500"
+            />
+
+            <div className="mt-3 grid grid-cols-2 gap-3 text-center font-mono text-xs">
+              <div className="rounded bg-slate-50 p-2 dark:bg-slate-900">
+                <span className="text-[10px] text-slate-400 block">Seno (Eje Y del círculo)</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  {sinVal.toFixed(3)}
+                </span>
+              </div>
+              <div className="rounded bg-slate-50 p-2 dark:bg-slate-900">
+                <span className="text-[10px] text-slate-400 block">Coseno (Eje X del círculo)</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  {cosVal.toFixed(3)}
+                </span>
+              </div>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              💡 <strong>¿Por qué funciona?</strong> Porque enrollamos el año en un reloj de 360
+              grados. El 31 de diciembre está pegado al 1 de enero en el círculo. Así el modelo
+              entiende de forma continua cuándo empieza la temporada de lluvias y cuándo la sequía sin
+              sufrir saltos matemáticos.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-slate-200/70 p-3.5 text-xs text-slate-600 dark:border-slate-800/80 dark:text-slate-300">
+            <h4 className="font-semibold text-slate-900 dark:text-white">
+              Los retrovisores físicos: Lags de 7, 14 y 17 días
+            </h4>
+            <p className="mt-1 text-slate-500 dark:text-slate-400">
+              No le pedimos a la IA que adivine el futuro de la nada. Para pronosticar Ciudad Bolívar
+              le entregamos como variables qué nivel tenía Puerto Ayacucho hace 14 días. Es la
+              velocidad real a la que viaja el agua por el lecho del río.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          CAPÍTULO 05: 7 FORMAS DE PENSAR (ARQUITECTURAS)
+         ========================================================================= */}
+      {chapter === "cerebros" && (
+        <div className="mt-5 space-y-6">
+          <div className="max-w-3xl space-y-2">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              No hay una sola IA: 7 cerebros con distintas personalidades
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              Cada arquitectura analiza el río desde un ángulo filosófico diferente. Selecciona un
+              modelo para entender cómo &quot;piensa&quot; con una analogía de la vida real:
+            </p>
+          </div>
+
+          {/* Selector de modelos estilo chips */}
+          <div className="flex flex-wrap gap-1.5">
+            {["LSTM", "Bi-LSTM", "Transformer", "ARIMAX", "AutoARIMA", "TimesFM", "SimpleML"].map(
+              (m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setActiveModel(m)}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all ${
-                    active
-                      ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
-                      : "text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300"
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
+                    activeModel === m
+                      ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   }`}
                 >
                   <span
                     className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: color }}
+                    style={{ backgroundColor: MODEL_COLORS[m] }}
                   />
-                  {m === "SimpleML" ? "Simple-ML" : m}
+                  {m}
                 </button>
-              );
-            })}
+              )
+            )}
           </div>
 
-          {/* Detalle limpio del modelo seleccionado */}
+          {/* Tarjeta explicativa con analogía viva */}
           <div className="rounded-lg border border-slate-200/80 p-4 dark:border-slate-800">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-xs font-bold text-sky-500">
                 {activeModel === "SimpleML" ? "Simple-ML (Baseline)" : activeModel}
-              </h3>
-              <span className="text-xs text-slate-400">
-                {MODELS_INFO[activeModel].family}
+              </span>
+              <span className="text-[11px] text-slate-400">
+                {activeModel === "ARIMAX" || activeModel === "AutoARIMA"
+                  ? "Estadística Matemática"
+                  : activeModel === "TimesFM"
+                  ? "Modelo Fundacional (Google)"
+                  : activeModel === "SimpleML"
+                  ? "Referencia a vencer"
+                  : "Red Neuronal Profunda"}
               </span>
             </div>
-            <p className="mt-1 text-xs font-medium text-sky-500">
-              {MODELS_INFO[activeModel].summary}
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              {MODELS_INFO[activeModel].detail}
+
+            <div className="mt-3 space-y-3 text-xs leading-relaxed">
+              {activeModel === "LSTM" && (
+                <>
+                  <p className="text-slate-700 dark:text-slate-200 font-medium">
+                    🧠 <strong>La analogía del estudiante con libreta de notas:</strong>
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    La LSTM lee los días uno tras otro en orden. Tiene compuertas de olvido: si lee
+                    que llovió una tarde cualquiera pero el mes sigue siendo seco, borra ese dato de
+                    su libreta para no alarmarse. Pero si lee que durante 10 días seguidos el río
+                    crece con fuerza, graba eso en su memoria de largo plazo y proyecta una gran
+                    crecida.
+                  </p>
+                </>
+              )}
+
+              {activeModel === "Bi-LSTM" && (
+                <>
+                  <p className="text-slate-700 dark:text-slate-200 font-medium">
+                    🧠 <strong>La analogía del detective que relee la carta:</strong>
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    Cuando lees un párrafo complejo, muchas veces vas hasta el final y luego vuelves
+                    hacia atrás para entender mejor las intenciones. La Bi-LSTM tiene dos redes: una
+                    lee el pasado hacia adelante (de hace un mes hacia hoy) y otra retrocede (de hoy
+                    hacia hace un mes). Une ambas visiones para comprender el estado real del río con
+                    máxima claridad.
+                  </p>
+                </>
+              )}
+
+              {activeModel === "Transformer" && (
+                <>
+                  <p className="text-slate-700 dark:text-slate-200 font-medium">
+                    🧠 <strong>La analogía del estratega con mapa desplegado:</strong>
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    No lee día por día como las LSTM. Pone todos los 30 días pasados sobre una mesa al
+                    mismo tiempo y usa &quot;Atención&quot;: traza líneas invisibles entre el día de hoy y
+                    lo que pasó hace 14 días en Puerto Ayacucho. Es la misma tecnología en la que se
+                    basan los grandes modelos como ChatGPT o Gemini, adaptada a la hidrología.
+                  </p>
+                </>
+              )}
+
+              {activeModel === "ARIMAX" && (
+                <>
+                  <p className="text-slate-700 dark:text-slate-200 font-medium">
+                    🧠 <strong>La analogía del físico calculista con ecuación en mano:</strong>
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    No usa neuronas ni capas ocultas. Usa una fórmula transparente y elegante: toma la
+                    altura de ayer, le resta la anteayer para ver la velocidad de cambio, y le suma el
+                    aporte de las estaciones aguas arriba multiplicado por factores fijos. Es súper
+                    rápido y muy confiable en tramos regulares.
+                  </p>
+                </>
+              )}
+
+              {activeModel === "AutoARIMA" && (
+                <>
+                  <p className="text-slate-700 dark:text-slate-200 font-medium">
+                    🧠 <strong>El ermitaño con ojos vendados:</strong>
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    Es exactamente igual a ARIMAX, pero se niega a mirar lo que ocurre aguas arriba.
+                    Intenta adivinar el río solo con su propio pasado. En la pestaña de métricas verás
+                    que casi siempre queda de último lugar: demuestra científicamente que la geografía
+                    y el río interconectado sí importan.
+                  </p>
+                </>
+              )}
+
+              {activeModel === "TimesFM" && (
+                <>
+                  <p className="text-slate-700 dark:text-slate-200 font-medium">
+                    🧠 <strong>El experto trotamundos de Google (Zero-Shot):</strong>
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    Nunca antes había visto el Río Orinoco. Pero Google lo entrenó previamente con
+                    cientos de miles de millones de ondas del mundo (temperatura global, mareas,
+                    viento, energía solar). Con solo mostrarle un fragmento largo del río, reconoce la
+                    estacionalidad del planeta de inmediato y proyecta la curva sin necesidad de
+                    entrenarlo desde cero.
+                  </p>
+                </>
+              )}
+
+              {activeModel === "SimpleML" && (
+                <>
+                  <p className="text-slate-700 dark:text-slate-200 font-medium">
+                    🧠 <strong>El pronóstico automático de Excel (El rival a vencer):</strong>
+                  </p>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    Vino empaquetado en el archivo original con la función &quot;Forecast with Magic&quot;.
+                    No corrigió errores humanos ni sabe de física de ríos. Lo mantenemos como línea
+                    roja punteada en el gráfico para demostrar objetivamente cuánto valor aporta el
+                    diseño científico frente a un botón mágico sin supervisión.
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          CAPÍTULO 06: EL EXAMEN (MÉTRICAS RMSE vs MAE)
+         ========================================================================= */}
+      {chapter === "notas" && (
+        <div className="mt-5 space-y-6">
+          <div className="max-w-3xl space-y-2">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              ¿Por qué no basta con el promedio? La lección del error cuadrático
+            </h3>
+            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              Cuando ves la tabla de <strong>Métricas</strong>, los modelos están ordenados por{" "}
+              <strong>RMSE</strong> y no por <strong>MAE</strong>. ¿Cuál es la diferencia práctica?
+              Descúbrelo con este experimento:
             </p>
           </div>
 
-          {/* Ventana Deslizante minimalista */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200/60 p-3.5 text-xs dark:border-slate-800/70">
-            <div className="space-y-0.5">
-              <span className="font-semibold text-slate-900 dark:text-white">
-                Ventana Deslizante (Sliding Window): Entrada L = {windowL}d → Salida H = 35d
+          {/* El experimento del error cuadrático */}
+          <div className="rounded-lg border border-slate-200/80 p-4 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-emerald-500 uppercase tracking-wide">
+                Simulador de impacto de error
               </span>
-              <p className="text-slate-500 dark:text-slate-400">
-                Las redes en PyTorch toman los últimos {windowL} días multivariados y proyectan los
-                35 días futuros.
-              </p>
-            </div>
-
-            <div className="flex items-center rounded-lg border border-slate-200 p-0.5 dark:border-slate-800">
-              {([14, 30, 60] as const).map((L) => (
+              <div className="flex gap-1 rounded border border-slate-200 p-0.5 text-xs dark:border-slate-800">
                 <button
-                  key={L}
                   type="button"
-                  onClick={() => setWindowL(L)}
-                  className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
-                    windowL === L
+                  onClick={() => setErrorProfile("uniforme")}
+                  className={`rounded px-2 py-0.5 font-medium transition ${
+                    errorProfile === "uniforme"
                       ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
+                      : "text-slate-400"
                   }`}
                 >
-                  {L}d
+                  Errores pequeños parejos
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setErrorProfile("catastrofico")}
+                  className={`rounded px-2 py-0.5 font-medium transition ${
+                    errorProfile === "catastrofico"
+                      ? "bg-rose-500 text-white"
+                      : "text-slate-400"
+                  }`}
+                >
+                  Un solo error catastrófico
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 text-xs">
+              <div className="rounded bg-slate-50 p-3 dark:bg-slate-900">
+                <span className="text-[11px] text-slate-400 block">
+                  Errores cometidos en 5 días de pronóstico:
+                </span>
+                <span className="mt-1 font-mono font-bold text-sm text-slate-800 dark:text-slate-200 block">
+                  {errorProfile === "uniforme"
+                    ? "10 cm, 10 cm, 10 cm, 10 cm, 10 cm"
+                    : "10 cm, 10 cm, 10 cm, 10 cm, 150 cm (1.5 metros)"}
+                </span>
+                <p className="mt-2 text-slate-500 dark:text-slate-400">
+                  {errorProfile === "uniforme"
+                    ? "El modelo tuvo un desempeño modesto pero estable todos los días."
+                    : "El modelo acertó casi perfecto 4 días, pero en uno solo se equivocó por 1.5 metros."}
+                </p>
+              </div>
+
+              <div className="rounded border border-slate-200/70 p-3 dark:border-slate-800">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-slate-500">MAE (Promedio simple):</span>
+                  <span className="font-mono font-bold text-sky-500 text-sm">
+                    {errorProfile === "uniforme" ? "0.10 m (10 cm)" : "0.38 m (38 cm)"}
+                  </span>
+                </div>
+                <div className="mt-2 flex justify-between items-baseline border-t border-slate-100 pt-2 dark:border-slate-800">
+                  <span className="text-slate-900 dark:text-white font-semibold">
+                    RMSE (Penaliza desastres²):
+                  </span>
+                  <span className="font-mono font-bold text-emerald-500 text-sm">
+                    {errorProfile === "uniforme"
+                      ? "0.10 m (10 cm)"
+                      : "0.68 m (¡Casi el doble del MAE!)"}
+                  </span>
+                </div>
+                <p className="mt-2 text-[11px] text-slate-400">
+                  En hidrología, un error de 1.5 metros inunda una población o vara un barco de carga.
+                  Por eso preferimos modelos que tengan un RMSE bajo, aunque su MAE sea parecido.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-sky-500/5 border border-sky-500/20 p-3.5 text-xs text-slate-600 dark:text-slate-300">
+            <span>
+              ¿Listo para ver quién ganó el examen con datos reales? Visita la tabla de métricas y la
+              gráfica de pronóstico:
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => onNavigateTab("metrics")}
+                className="font-semibold text-sky-500 hover:underline"
+              >
+                Ir a Métricas →
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigateTab("forecast")}
+                className="font-semibold text-sky-500 hover:underline"
+              >
+                Ir a Pronóstico →
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* =====================================================================
-          06. MÉTRICAS DE EVALUACIÓN
-         ===================================================================== */}
-      {step === "metricas" && (
-        <div className="mt-5 space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border border-slate-200/80 p-3.5 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <strong className="text-slate-900 dark:text-white">RMSE (m)</strong>
-                <span className="text-[11px] text-emerald-500">Menor es mejor ↓</span>
-              </div>
-              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                Raíz del error cuadrático medio. Eleva los fallos al cuadrado antes de promediar,
-                castigando fuertemente cualquier pico de error peligroso.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-200/80 p-3.5 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <strong className="text-slate-900 dark:text-white">MAE (m)</strong>
-                <span className="text-[11px] text-sky-500">Menor es mejor ↓</span>
-              </div>
-              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                Error absoluto medio. Indica de forma directa por cuántos metros o centímetros se
-                desvía el modelo en un día típico.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-200/80 p-3.5 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <strong className="text-slate-900 dark:text-white">MAPE (%)</strong>
-                <span className="text-[11px] text-sky-500">Menor es mejor ↓</span>
-              </div>
-              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                Error porcentual relativo a la altura del río en esa estación, útil para comparar
-                estaciones de distinta escala.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-200/80 p-3.5 dark:border-slate-800">
-              <div className="flex items-center justify-between text-xs">
-                <strong className="text-slate-900 dark:text-white">R²</strong>
-                <span className="text-[11px] text-amber-500">Óptimo = 1.000 ↑</span>
-              </div>
-              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                Fracción de la variación real del río explicada por el modelo. Cercano a 1 es
-                excelente; menor a 0 es peor que predecir el promedio.
-              </p>
-            </div>
-          </div>
-
-          {/* Demostración minimalista RMSE vs MAE */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200/60 p-3.5 text-xs dark:border-slate-800/70">
-            <div className="flex flex-wrap items-center gap-4">
-              <span className="text-slate-500 dark:text-slate-400">
-                Errores en 5 días:{" "}
-                <code className="font-mono text-slate-800 dark:text-slate-200">
-                  [0.10, 0.10, 0.10, 0.10, {spikeError ? "1.50m" : "0.10m"}]
-                </code>
-              </span>
-              <span className="font-mono">
-                MAE: <strong>{spikeError ? "0.380m" : "0.100m"}</strong>
-              </span>
-              <span className="font-mono">
-                RMSE:{" "}
-                <strong className={spikeError ? "text-amber-500" : ""}>
-                  {spikeError ? "0.677m" : "0.100m"}
-                </strong>
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSpikeError((prev) => !prev)}
-              className="rounded-lg border border-slate-200 px-3 py-1 font-medium text-slate-600 hover:text-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:text-white"
-            >
-              {spikeError ? "Restaurar errores parejos" : "Simular 1 pico de error (+1.50m)"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Minimal Footer Navigation */}
-      <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3.5 text-xs text-slate-400 dark:border-slate-800/70">
+      {/* Pie de navegación simple entre capítulos */}
+      <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400 dark:border-slate-800/70">
         <span>
-          Paso {STEPS[currentStepIdx].num} de 06 — {STEPS[currentStepIdx].label}
+          Capítulo {CHAPTERS[currentIdx].num} de 06 — {CHAPTERS[currentIdx].title}
         </span>
 
-        {nextStep ? (
+        {nextChapter ? (
           <button
             type="button"
-            onClick={() => setStep(nextStep.id)}
-            className="inline-flex items-center gap-1 font-medium text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+            onClick={() => setChapter(nextChapter.id)}
+            className="inline-flex items-center gap-1 font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white"
           >
-            Siguiente: {nextStep.label} <ArrowRight className="h-3.5 w-3.5" />
+            Siguiente: {nextChapter.title} ({nextChapter.hook}) <ArrowRight className="h-3 w-3" />
           </button>
         ) : (
           <button
             type="button"
             onClick={() => onNavigateTab("forecast")}
-            className="inline-flex items-center gap-1 font-medium text-sky-500 hover:underline"
+            className="inline-flex items-center gap-1 font-semibold text-sky-500 hover:underline"
           >
-            Volver al Pronóstico <ArrowRight className="h-3.5 w-3.5" />
+            Ver pronóstico en vivo <ArrowRight className="h-3 w-3" />
           </button>
         )}
       </div>
