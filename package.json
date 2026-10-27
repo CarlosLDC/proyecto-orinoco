@@ -1,0 +1,13 @@
+{
+  "name": "proyecto-orinoco",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo para predicción y monitoreo hidrométrico del Río Orinoco",
+  "scripts": {
+    "setup": "./setup.sh",
+    "dev": "./dev.sh",
+    "dev:backend": "./.venv/bin/uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:frontend": "cd frontend && npm run dev",
+    "test": "./.venv/bin/pytest"
+  }
+}

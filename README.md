@@ -12,26 +12,37 @@ Este repositorio unifica:
 
 ---
 
-## 🚀 Requisitos y Configuración
+## ⚡ Inicio Rápido (Un solo comando)
 
-### 1. Backend (Python 3.10+)
-Crear y activar el entorno virtual e instalar dependencias:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 2. Frontend (Node.js 18+)
-Instalar dependencias y levantar el servidor web:
+### 1. Instalar todas las dependencias (Backend + Frontend)
+Con un solo comando preparas el entorno virtual de Python y las dependencias de Node.js:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+make install
+# O alternativamente: ./setup.sh
 ```
-Acceder a la aplicación en `http://localhost:3000`.
+
+### 2. Levantar ambos servidores en simultáneo
+Inicia FastAPI en `http://localhost:8000` y Next.js en `http://localhost:3000` en paralelo con recarga en vivo:
+
+```bash
+make dev
+# O alternativamente: ./dev.sh
+```
+*(Al presionar `Ctrl + C` ambos servidores se detienen de forma limpia).*
+
+---
+
+## 🛠️ Comandos de Makefile Disponibles
+
+| Comando | Descripción |
+|---|---|
+| `make install` | Crea el entorno virtual `.venv` e instala dependencias de Python y Node.js |
+| `make dev` | Levanta ambos servidores (Backend :8000 y Frontend :3000) en simultáneo |
+| `make backend` | Levanta únicamente el backend FastAPI |
+| `make frontend` | Levanta únicamente el frontend Next.js |
+| `make test` | Ejecuta las pruebas unitarias con pytest |
+| `make clean` | Limpia caches y archivos temporales |
 
 ---
 
