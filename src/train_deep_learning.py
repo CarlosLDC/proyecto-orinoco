@@ -8,7 +8,10 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 import joblib
 
-from deep_learning_models import MultiStepRiverDataset, RiverLSTM, RiverBiLSTM, RiverTransformer
+try:
+    from src.deep_learning_models import MultiStepRiverDataset, RiverLSTM, RiverBiLSTM, RiverTransformer
+except ModuleNotFoundError:
+    from deep_learning_models import MultiStepRiverDataset, RiverLSTM, RiverBiLSTM, RiverTransformer
 
 def set_seed(seed=42):
     random.seed(seed)

@@ -129,6 +129,25 @@ def get_all_forecasts() -> pd.DataFrame:
     return merged.sort_values("Fecha")
 
 
+def get_all_test_preds() -> pd.DataFrame:
+    """Consolidates test set predictions (2024-12-01 to 2025-02-24) from all models."""
+    dfs = []
+    for fname in ["test_preds_arima.csv", "test_preds_deep_learning.csv", "test_preds_timesfm.csv"]:
+        fpath = DATA_DIR / fname
+        if fpath.exists():
+            df_t = pd.read_csv(fpath)
+            # Drop *_Real columns if present so we don't duplicate
+            cols = [c for c in df_t.columns if not c.endswith("_Real")]
+            dfs.append(df_t[cols])
+    if not dfs:
+        return pd.DataFrame()
+    merged = dfs[0]
+    for other in dfs[1:]:
+        merged = pd.merge(merged, other, on="Fecha", how="outer")
+    merged["Fecha"] = pd.to_datetime(merged["Fecha"]).dt.strftime("%Y-%m-%d")
+    return merged.sort_values("Fecha")
+
+
 def get_all_metrics() -> pd.DataFrame:
     """Consolidates metrics from all models."""
     dfs = []
@@ -342,31 +361,47 @@ def get_metrics_table(
 @app.get("/api/compare-series")
 def get_combined_comparison(
     station_id: str = Query(..., description="Estación obligatoria para graficar (ej. ciudad_bolivar)"),
-    history_days: int = Query(60, description="Días previos de historia real antes de la predicción")
+    history_days: int = Query(86, description="Días previos de historia real antes de la predicción (86 días = Test Set completo)")
 ):
     """
     Endpoint especializado para gráficos de frontend (Chart.js / Recharts / Plotly):
-    Devuelve los últimos N días de historia real concatenados con el horizonte de 35 días
-    para todos los modelos y el baseline.
+    Devuelve los últimos N días de historia real (incluyendo predicciones sobre el Test Set
+    cuando están disponibles) concatenados con el horizonte de 35 días para todos los modelos y el baseline.
     """
     raw_name = STATION_MAP.get(station_id)
     if not raw_name:
         raise HTTPException(status_code=400, detail="Estación desconocida.")
 
-    # 1. Historical tail
+    # 1. Historical tail + Test predictions
     df_clean = get_clean_data()
     tail_hist = df_clean.tail(history_days)
-    
+    df_test_preds = get_all_test_preds()
+    test_map: Dict[str, Dict[str, Optional[float]]] = {}
+    if not df_test_preds.empty:
+        test_cols = [c for c in df_test_preds.columns if c.startswith(f"{raw_name}_")]
+        for _, tr in df_test_preds.iterrows():
+            f_str = str(tr["Fecha"])
+            test_map[f_str] = {}
+            for col in test_cols:
+                m_name = col.replace(f"{raw_name}_", "")
+                val = tr[col]
+                test_map[f_str][m_name] = None if pd.isna(val) else round(float(val), 4)
+
     timeline = []
     for _, r in tail_hist.iterrows():
         f_str = r["Fecha"].strftime("%Y-%m-%d")
-        timeline.append({
+        point: Dict[str, Any] = {
             "fecha": f_str,
-            "real": float(r[raw_name]),
+            "real": round(float(r[raw_name]), 4),
             "es_prediccion": False,
-        })
+            "es_test": f_str in test_map,
+        }
+        if f_str in test_map:
+            for m_name, m_val in test_map[f_str].items():
+                point[m_name] = m_val
+        timeline.append(point)
         
-    # 2. Forecasts
+    # 2. Forecasts (35-day blind horizon)
     df_fc = get_all_forecasts()
     model_cols = [c for c in df_fc.columns if c.startswith(f"{raw_name}_")]
     
@@ -376,15 +411,87 @@ def get_combined_comparison(
             "fecha": f_str,
             "real": None,
             "es_prediccion": True,
+            "es_test": False,
         }
         for col in model_cols:
             m_name = col.replace(f"{raw_name}_", "")
             val = r[col]
-            point[m_name] = None if pd.isna(val) else float(val)
+            point[m_name] = None if pd.isna(val) else round(float(val), 4)
         timeline.append(point)
 
     return {
         "station_id": station_id,
         "station_name": raw_name,
         "timeline": timeline
+    }
+
+
+@app.get("/api/wave-propagation")
+def get_wave_propagation(max_lag: int = Query(30, ge=5, le=45)):
+    """
+    Calcula y retorna el perfil empírico de correlación cruzada entre estaciones
+    aguas arriba y aguas abajo (tanto en niveles como en primeras diferencias diarias Delta y_t),
+    demostrando los retardos físicos de propagación de onda (7, 14 y 17 días).
+    """
+    df = get_clean_data().sort_values("Fecha").reset_index(drop=True)
+    stations = ["Puerto Ayacucho", "Caicara el mini mini", "Ciudad Bolívar", "Palúa"]
+    df_diff = df[stations].diff().dropna()
+
+    pairs = [
+        ("puerto_ayacucho", "caicara", "Puerto Ayacucho", "Caicara el mini mini", "Puerto Ayacucho → Caicara del Orinoco", 7),
+        ("puerto_ayacucho", "ciudad_bolivar", "Puerto Ayacucho", "Ciudad Bolívar", "Puerto Ayacucho → Ciudad Bolívar", 14),
+        ("puerto_ayacucho", "palua", "Puerto Ayacucho", "Palúa", "Puerto Ayacucho → Palúa", 17),
+        ("caicara", "ciudad_bolivar", "Caicara el mini mini", "Ciudad Bolívar", "Caicara → Ciudad Bolívar", 7),
+        ("caicara", "palua", "Caicara el mini mini", "Palúa", "Caicara → Palúa", 10),
+        ("ciudad_bolivar", "palua", "Ciudad Bolívar", "Palúa", "Ciudad Bolívar → Palúa", 3),
+    ]
+
+    lags = list(range(0, max_lag + 1))
+    pair_results = []
+
+    for up_id, down_id, up_raw, down_raw, label, expected_lag in pairs:
+        curve = []
+        best_lag_lvl = 0
+        best_corr_lvl = -1.0
+        best_lag_diff = 0
+        best_corr_diff = -1.0
+
+        for lag in lags:
+            if lag == 0:
+                c_lvl = float(df[down_raw].corr(df[up_raw]))
+                c_dif = float(df_diff[down_raw].corr(df_diff[up_raw]))
+            else:
+                c_lvl = float(df[down_raw].iloc[lag:].corr(df[up_raw].iloc[:-lag]))
+                c_dif = float(df_diff[down_raw].iloc[lag:].corr(df_diff[up_raw].iloc[:-lag]))
+
+            if c_lvl > best_corr_lvl:
+                best_corr_lvl = c_lvl
+                best_lag_lvl = lag
+            if c_dif > best_corr_diff:
+                best_corr_diff = c_dif
+                best_lag_diff = lag
+
+            curve.append({
+                "lag": lag,
+                "corr_nivel": round(c_lvl, 4),
+                "corr_diferencia": round(c_dif, 4),
+            })
+
+        pair_results.append({
+            "pair_id": f"{up_id}__{down_id}",
+            "upstream_id": up_id,
+            "downstream_id": down_id,
+            "label": label,
+            "expected_physical_lag": expected_lag,
+            "peak_lag_nivel": best_lag_lvl,
+            "peak_corr_nivel": round(best_corr_lvl, 4),
+            "peak_lag_diferencia": best_lag_diff,
+            "peak_corr_diferencia": round(best_corr_diff, 4),
+            "series": curve,
+        })
+
+    return {
+        "max_lag": max_lag,
+        "reference_lags": [7, 14, 17],
+        "pairs": pair_results,
     }

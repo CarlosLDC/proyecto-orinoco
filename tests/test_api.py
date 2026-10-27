@@ -50,3 +50,11 @@ def test_compare_series():
     data = response.json()
     assert data["station_id"] == "palua"
     assert len(data["timeline"]) == 14 + 35
+
+def test_wave_propagation():
+    response = client.get("/api/wave-propagation?max_lag=25")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["max_lag"] == 25
+    assert len(data["pairs"]) == 6
+    assert "peak_lag_diferencia" in data["pairs"][0]
