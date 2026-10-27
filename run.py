@@ -154,8 +154,7 @@ def cmd_dev():
     print(f"  💻 Frontend Web: http://localhost:{frontend_port}")
     if backend_port != 8000 or frontend_port != 3000:
         print(f"  ℹ️  Se asignaron puertos alternativos libres ({backend_port} / {frontend_port})")
-    print("  💡 La pestaña del navegador se abrirá automáticamente.")
-    print("  💡 Al cerrar la pestaña (o presionar Ctrl + C), los servidores se detendrán.")
+    print("  💡 Presiona Ctrl + C en esta terminal para detener ambos servidores.")
     print("=" * 60 + "\n")
 
     backend_proc = None

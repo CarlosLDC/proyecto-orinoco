@@ -30,9 +30,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from src.api.dev_watcher import router as dev_watcher_router
-app.include_router(dev_watcher_router)
-
 # Station metadata with upstream-downstream hydro dynamics
 STATIONS_METADATA = [
     {

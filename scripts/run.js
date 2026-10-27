@@ -225,8 +225,7 @@ async function cmdDev() {
   if (backendPort !== 8000 || frontendPort !== 3000) {
     console.log(`  ℹ️  Se asignaron puertos alternativos libres (${backendPort} / ${frontendPort})`);
   }
-  console.log('  💡 La pestaña del navegador se abrirá automáticamente.');
-  console.log('  💡 Al cerrar la pestaña (o presionar Ctrl + C), los servidores se detendrán.');
+  console.log('  💡 Presiona Ctrl + C en esta terminal para detener ambos servidores.');
   console.log('='.repeat(60) + '\n');
 
   let backendProc = null;
